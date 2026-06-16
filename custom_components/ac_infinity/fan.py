@@ -1,119 +1,116 @@
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import logging
+import math
+from typing import Any
 
-import async_timeout
-from ac_infinity_ble.const import MANUFACTURER_ID
-from bleak.backends.device import BLEDevice
-from homeassistant.components import bluetooth
-from homeassistant.components.bluetooth.active_update_coordinator import \
-    ActiveBluetoothDataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import (
-    BaseCoordinatorEntity
-)
-from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.components.fan import FanEntity, FanEntityFeature
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
+from homeassistant.util.percentage import (int_states_in_range,
+                                           percentage_to_ranged_value,
+                                           ranged_value_to_percentage)
 
-from .device import ACInfinityDevice
+from .const import DEVICE_MODEL, DOMAIN, MANUFACTURER, get_device_model
+from .coordinator import (ACInfinityDataUpdateCoordinator,
+                          ActiveBluetoothCoordinatorEntity)
+from .device import WORK_TYPE_AUTO, ACInfinityDevice
+from .models import ACInfinityData
 
-DEVICE_STARTUP_TIMEOUT = 30
+SPEED_RANGE = (1, 10)
+
+PRESET_AUTO_MODE = "Auto"
 
 
-class ACInfinityDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    data: ACInfinityData = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([ACInfinityFan(data.coordinator, data.device, "Fan")])
+
+
+class ACInfinityFan(
+    ActiveBluetoothCoordinatorEntity[ACInfinityDataUpdateCoordinator], FanEntity
+):
+    _attr_has_entity_name = True
+    _attr_speed_count = int_states_in_range(SPEED_RANGE)
+    _attr_supported_features = (
+        FanEntityFeature.SET_SPEED
+        | FanEntityFeature.TURN_OFF
+        | FanEntityFeature.TURN_ON
+        | FanEntityFeature.PRESET_MODE
+    )
+    _attr_preset_modes = [PRESET_AUTO_MODE]
 
     def __init__(
         self,
-        hass: HomeAssistant,
-        logger: logging.Logger,
-        ble_device: BLEDevice,
-        controller: ACInfinityDevice,
+        coordinator: ACInfinityDataUpdateCoordinator,
+        device: ACInfinityDevice,
+        name: str,
     ) -> None:
-        super().__init__(
-            hass=hass,
-            logger=logger,
-            address=ble_device.address,
-            needs_poll_method=self._needs_poll,
-            poll_method=self._async_update,
-            mode=bluetooth.BluetoothScanningMode.ACTIVE,
-            connectable=True,
-        )
-        self.ble_device = ble_device
-        self.controller = controller
-        self._device_ready = asyncio.Event()
-
-    @callback
-    def _needs_poll(
-        self,
-        service_info: bluetooth.BluetoothServiceInfoBleak,
-        seconds_since_last_poll: float | None,
-    ) -> bool:
-        return (
-            self.hass.state == CoreState.running
-            and self.controller.update_needed(seconds_since_last_poll)
-            and bool(
-                bluetooth.async_ble_device_from_address(
-                    self.hass, service_info.device.address, connectable=True
-                )
-            )
+        super().__init__(coordinator)
+        self._device = device
+        self._attr_name = name
+        self._attr_unique_id = f"{self._device.address}_{slugify(name)}"
+        self._attr_device_info = DeviceInfo(
+            name=device.name,
+            model=get_device_model(device.state.type),
+            manufacturer=MANUFACTURER,
+            sw_version=device.state.version,
+            connections={(dr.CONNECTION_BLUETOOTH, device.address)},
         )
 
-    async def _async_update(
-        self, service_info: bluetooth.BluetoothServiceInfoBleak
-    ) -> None:
-        """Poll the device."""
-        await self.controller.update()
-        self.logger.debug("%s (%s) state after poll: %s",
-                          self.ble_device.name,
-                          self.ble_device.address,
-                          self.controller.state)
+    async def async_set_percentage(self, percentage: int) -> None:
+        """Set the speed of the fan, as a percentage."""
+        speed = 0
+        if percentage > 0:
+            speed = math.ceil(percentage_to_ranged_value(SPEED_RANGE, percentage))
 
-    @callback
-    def _async_handle_bluetooth_event(
+        await self._device.set_speed(speed)
+
+    async def async_turn_on(
         self,
-        service_info: bluetooth.BluetoothServiceInfoBleak,
-        change: bluetooth.BluetoothChange,
+        percentage: int | None = None,
+        preset_mode: str | None = None,
+        **kwargs: Any,
     ) -> None:
-        """Handle a Bluetooth event."""
-        self.logger.debug("%s (%s) received: %s",
-                          self.ble_device.name,
-                          self.ble_device.address,
-                          service_info.advertisement)
-        if MANUFACTURER_ID not in service_info.advertisement.manufacturer_data:
+        if preset_mode is not None:
+            await self.async_set_preset_mode(preset_mode)
             return
-        self.ble_device = service_info.device
-        self.controller.set_ble_device_and_advertisement_data(
-            service_info.device, service_info.advertisement
+        speed = None
+        if percentage is not None:
+            speed = math.ceil(percentage_to_ranged_value(SPEED_RANGE, percentage))
+        await self._device.turn_on(speed)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._device.turn_off()
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        if preset_mode == PRESET_AUTO_MODE:
+            await self._device.set_mode_auto()
+        else:
+            raise ValueError(f"Unsupported preset mode: {preset_mode}")
+
+    @callback
+    def _update_attrs(self) -> None:
+        """Handle updating _attr values."""
+        if self._device.state.work_type == WORK_TYPE_AUTO:
+            self._attr_is_on = True
+            self._attr_preset_mode = PRESET_AUTO_MODE
+        else:
+            self._attr_is_on = self._device.is_on
+            self._attr_preset_mode = None
+        self._attr_percentage = ranged_value_to_percentage(
+            SPEED_RANGE, self._device.state.fan
         )
-        if self.controller.name:
-            self._device_ready.set()
-        self.logger.debug("%s (%s) state after advertisement: %s",
-                          self.ble_device.name,
-                          self.ble_device.address,
-                          self.controller.state)
-        super()._async_handle_bluetooth_event(service_info, change)
 
-    async def async_wait_ready(self) -> bool:
-        """Wait for the device to be ready."""
-        with contextlib.suppress(asyncio.TimeoutError):
-            async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
-                await self._device_ready.wait()
-                return True
-        return False
-
-
-class ActiveBluetoothCoordinatorEntity[
-    _ActiveBluetoothDataUpdateCoordinatorT: ActiveBluetoothDataUpdateCoordinator = ActiveBluetoothDataUpdateCoordinator
-](
-    BaseCoordinatorEntity[_ActiveBluetoothDataUpdateCoordinatorT]
-):
-    """A class for entities using an ActiveBluetoothDataUpdateCoordinator and whose availability should include
-    whether the last Bluetooth poll was successful."""
-
-    async def async_update(self) -> None:
-        """Only allow updates via the coordinator, not on demand."""
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.available and self.coordinator.last_poll_successful
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._update_attrs()
+        super()._handle_coordinator_update()

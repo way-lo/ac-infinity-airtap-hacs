@@ -1,53 +1,21 @@
-from __future__ import annotations
+from bleak.exc import BleakError
 
-import logging
+DOMAIN = "ac_infinity"
 
-from ac_infinity_ble import DeviceInfo
-from homeassistant.components import bluetooth
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS, CONF_SERVICE_DATA, Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+MANUFACTURER = "AC Infinity"
 
-from .const import DOMAIN
-from .coordinator import ACInfinityDataUpdateCoordinator
-from .device import ACInfinityDevice, DeviceInfoEx
-from .models import ACInfinityData
+DEVICE_TIMEOUT = 30
+# Poll interval is controlled by _MIN_SECONDS_BETWEEN_POLLS in device.py
 
-PLATFORMS: list[Platform] = [Platform.FAN, Platform.NUMBER, Platform.SENSOR, Platform.SWITCH]
+BLEAK_EXCEPTIONS = (AttributeError, BleakError, TimeoutError)
 
-_LOGGER = logging.getLogger(__name__)
+DEVICE_MODEL = {1: "Controller 67",
+                6: "Airtap Series",
+                7: "Controller 69",
+                11: "Controller 69 Pro"}
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    address: str = entry.data[CONF_ADDRESS]
-    ble_device = bluetooth.async_ble_device_from_address(hass, address.upper(), True)
-    if not ble_device:
-        raise ConfigEntryNotReady(
-            f"Could not find AC Infinity device with address {address}"
-        )
+def get_device_model(device_type: int) -> str:
+    return DEVICE_MODEL.get(device_type, f"AC Infinity Device (type {device_type})")
 
-    service_data = entry.data[CONF_SERVICE_DATA]
-    if type(service_data) is dict:
-        device_info = DeviceInfoEx(**service_data)
-    elif type(service_data) is DeviceInfoEx:
-        device_info = service_data
-    elif type(service_data) is DeviceInfo:
-        device_info = DeviceInfoEx.create(service_data)
-    else:
-        raise ValueError(
-            f"Unexpected config entry service data type: {type(service_data)}"
-        )
-
-    device = ACInfinityDevice(ble_device, device_info)
-    coordinator = ACInfinityDataUpdateCoordinator(hass, _LOGGER, ble_device, device)
-
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = ACInfinityData(
-        entry.title, device, coordinator
-    )
-
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    entry.async_on_unload(coordinator.async_start())
-
-    return True
+FAMILY_E_MODELS = {7, 9, 11, 12}

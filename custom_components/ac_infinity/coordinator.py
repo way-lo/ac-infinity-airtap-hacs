@@ -1,119 +1,119 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
-from typing import Any
 
+import async_timeout
 from ac_infinity_ble.const import MANUFACTURER_ID
-import voluptuous as vol
-
-from homeassistant import config_entries
-from homeassistant.components.bluetooth import (
-    BluetoothServiceInfoBleak,
-    async_discovered_service_info,
+from bleak.backends.device import BLEDevice
+from homeassistant.components import bluetooth
+from homeassistant.components.bluetooth.active_update_coordinator import \
+    ActiveBluetoothDataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import (
+    BaseCoordinatorEntity
 )
-from homeassistant.const import CONF_ADDRESS, CONF_SERVICE_DATA
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.core import CoreState, HomeAssistant, callback
 
-from .const import BLEAK_EXCEPTIONS, DOMAIN
-from .device import ACInfinityDevice, DeviceInfoEx
+from .device import ACInfinityDevice
 
-_LOGGER = logging.getLogger(__name__)
+DEVICE_STARTUP_TIMEOUT = 30
 
 
-def parse_manufacturer_data(data: bytes) -> DeviceInfoEx:
-    from ac_infinity_ble.protocol import parse_manufacturer_data as parse
-    return DeviceInfoEx.create(parse(data))
+class ACInfinityDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
 
-
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-
-    VERSION = 1
-
-    def __init__(self) -> None:
-        self._discovery_info: BluetoothServiceInfoBleak | None = None
-        self._discovered_devices: dict[str, BluetoothServiceInfoBleak] = {}
-
-    async def async_step_bluetooth(
-        self, discovery_info: BluetoothServiceInfoBleak
-    ) -> FlowResult:
-        """Handle the bluetooth discovery step."""
-        await self.async_set_unique_id(discovery_info.address)
-        self._abort_if_unique_id_configured()
-        self._discovery_info = discovery_info
-        device: DeviceInfoEx = parse_manufacturer_data(
-            discovery_info.advertisement.manufacturer_data[MANUFACTURER_ID]
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        logger: logging.Logger,
+        ble_device: BLEDevice,
+        controller: ACInfinityDevice,
+    ) -> None:
+        super().__init__(
+            hass=hass,
+            logger=logger,
+            address=ble_device.address,
+            needs_poll_method=self._needs_poll,
+            poll_method=self._async_update,
+            mode=bluetooth.BluetoothScanningMode.ACTIVE,
+            connectable=True,
         )
-        self.context["title_placeholders"] = {"name": device.name}
-        return await self.async_step_user()
+        self.ble_device = ble_device
+        self.controller = controller
+        self._device_ready = asyncio.Event()
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the user step to pick discovered device."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            address = user_input[CONF_ADDRESS]
-            discovery_info = self._discovered_devices[address]
-            await self.async_set_unique_id(
-                discovery_info.address, raise_on_progress=False
-            )
-            self._abort_if_unique_id_configured()
-            controller = ACInfinityDevice(
-                discovery_info.device, advertisement_data=discovery_info.advertisement
-            )
-            try:
-                await controller.update()
-            except BLEAK_EXCEPTIONS:
-                errors["base"] = "cannot_connect"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected error")
-                errors["base"] = "unknown"
-            else:
-                await controller.stop()
-                return self.async_create_entry(
-                    title=controller.name,
-                    data={
-                        CONF_ADDRESS: discovery_info.address,
-                        CONF_SERVICE_DATA: parse_manufacturer_data(
-                            discovery_info.advertisement.manufacturer_data[
-                                MANUFACTURER_ID
-                            ]
-                        ),
-                    },
+    @callback
+    def _needs_poll(
+        self,
+        service_info: bluetooth.BluetoothServiceInfoBleak,
+        seconds_since_last_poll: float | None,
+    ) -> bool:
+        return (
+            self.hass.state == CoreState.running
+            and self.controller.update_needed(seconds_since_last_poll)
+            and bool(
+                bluetooth.async_ble_device_from_address(
+                    self.hass, service_info.device.address, connectable=True
                 )
-
-        if discovery := self._discovery_info:
-            self._discovered_devices[discovery.address] = discovery
-        else:
-            current_addresses = self._async_current_ids()
-            for discovery in async_discovered_service_info(self.hass):
-                if (
-                    discovery.address in current_addresses
-                    or discovery.address in self._discovered_devices
-                ):
-                    continue
-                self._discovered_devices[discovery.address] = discovery
-
-        if not self._discovered_devices:
-            return self.async_abort(reason="no_devices_found")
-
-        _LOGGER.debug("Discovered devices: %s", self._discovered_devices)
-
-        devices = {}
-        for service_info in self._discovered_devices.values():
-            device = parse_manufacturer_data(
-                service_info.advertisement.manufacturer_data[MANUFACTURER_ID]
             )
-            devices[service_info.address] = f"{device.name} ({service_info.address})"
+        )
 
-        data_schema = vol.Schema(
-            {
-                vol.Required(CONF_ADDRESS): vol.In(devices),
-            }
+    async def _async_update(
+        self, service_info: bluetooth.BluetoothServiceInfoBleak
+    ) -> None:
+        """Poll the device."""
+        await self.controller.update()
+        self.logger.debug("%s (%s) state after poll: %s",
+                          self.ble_device.name,
+                          self.ble_device.address,
+                          self.controller.state)
+
+    @callback
+    def _async_handle_bluetooth_event(
+        self,
+        service_info: bluetooth.BluetoothServiceInfoBleak,
+        change: bluetooth.BluetoothChange,
+    ) -> None:
+        """Handle a Bluetooth event."""
+        self.logger.debug("%s (%s) received: %s",
+                          self.ble_device.name,
+                          self.ble_device.address,
+                          service_info.advertisement)
+        if MANUFACTURER_ID not in service_info.advertisement.manufacturer_data:
+            return
+        self.ble_device = service_info.device
+        self.controller.set_ble_device_and_advertisement_data(
+            service_info.device, service_info.advertisement
         )
-        return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-        )
+        if self.controller.name:
+            self._device_ready.set()
+        self.logger.debug("%s (%s) state after advertisement: %s",
+                          self.ble_device.name,
+                          self.ble_device.address,
+                          self.controller.state)
+        super()._async_handle_bluetooth_event(service_info, change)
+
+    async def async_wait_ready(self) -> bool:
+        """Wait for the device to be ready."""
+        with contextlib.suppress(asyncio.TimeoutError):
+            async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
+                await self._device_ready.wait()
+                return True
+        return False
+
+
+class ActiveBluetoothCoordinatorEntity[
+    _ActiveBluetoothDataUpdateCoordinatorT: ActiveBluetoothDataUpdateCoordinator = ActiveBluetoothDataUpdateCoordinator
+](
+    BaseCoordinatorEntity[_ActiveBluetoothDataUpdateCoordinatorT]
+):
+    """A class for entities using an ActiveBluetoothDataUpdateCoordinator and whose availability should include
+    whether the last Bluetooth poll was successful."""
+
+    async def async_update(self) -> None:
+        """Only allow updates via the coordinator, not on demand."""
+
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.available and self.coordinator.last_poll_successful
