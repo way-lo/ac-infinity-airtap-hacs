@@ -35,10 +35,13 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 **Component folder**
 - Renamed from `custom_components/ac_infinity/` to `custom_components/ac_infinity_airtap/`
 
+**`images/` (new)**
+- Added `icon.png` for HACS integration icon
+- Added `logo.png` for HACS logo view
+
 ---
 
 **Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`, `hacs.json`
-
 # ac-infinity-airtap-hacs
 
 Home Assistant custom integration for Bluetooth Low Energy (BLE) control of [AC Infinity Airtap](https://acinfinity.com/register-booster-fans/) series register fans.
