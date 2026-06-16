@@ -2,5 +2,5 @@
     "name": "AC Infinity Airtap",
     "render_readme": true,
     "homeassistant": "2025.7.0",
-    "icon": "custom_components/ac_infinity_airtap/images/icon.png"
+    "icon": "custom_components/ac_infinity_airtap/brand/icon.png"
 }
