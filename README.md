@@ -61,4 +61,5 @@ logger:
 
 ## Credit
 
-This project builds on work by Jason Hunter: [hunterjm/ac-infinity-hacs](https://github.com/hunterjm/ac-infinity-hacs).
+This project builds on work by Jason Hunter: [hunterjm/ac-infinity-hacs](https://github.com/hunterjm/ac-infinity-hacs)
+and mtsphere: https://github.com/mtsphere/ac-infinity-airtap-hacs
