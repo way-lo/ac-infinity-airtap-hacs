@@ -1,13 +1,6 @@
 {
-    "config": {
-        "abort": {
-            "no_devices_found": "No devices found on the network",
-            "single_instance_allowed": "Already configured. Only a single configuration possible."
-        },
-        "step": {
-            "confirm": {
-                "description": "Do you want to start setup?"
-            }
-        }
-    }
+    "name": "AC Infinity Airtap",
+    "render_readme": true,
+    "homeassistant": "2025.7.0",
+    "icon": "custom_components/ac_infinity_airtap/images/icon.png"
 }

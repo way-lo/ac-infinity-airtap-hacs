@@ -17,7 +17,7 @@ from homeassistant.util.percentage import (int_states_in_range,
 from .const import DEVICE_MODEL, DOMAIN, MANUFACTURER, get_device_model
 from .coordinator import (ACInfinityDataUpdateCoordinator,
                           ActiveBluetoothCoordinatorEntity)
-from .device import WORK_TYPE_AUTO, ACInfinityDevice
+from .device import WORK_TYPE_AUTO, WORK_TYPE_ON, ACInfinityDevice
 from .models import ACInfinityData
 
 SPEED_RANGE = (1, 10)
@@ -99,15 +99,27 @@ class ACInfinityFan(
     @callback
     def _update_attrs(self) -> None:
         """Handle updating _attr values."""
-        if self._device.state.work_type == WORK_TYPE_AUTO:
+        work_type = self._device.state.work_type
+        fan_speed = self._device.state.fan
+
+        if work_type == WORK_TYPE_AUTO:
             self._attr_is_on = True
             self._attr_preset_mode = PRESET_AUTO_MODE
-        else:
-            self._attr_is_on = self._device.is_on
+            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+        elif work_type == WORK_TYPE_ON:
+            self._attr_is_on = True
             self._attr_preset_mode = None
-        self._attr_percentage = ranged_value_to_percentage(
-            SPEED_RANGE, self._device.state.fan
-        )
+            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+        else:
+            # work_type is WORK_TYPE_OFF, but show live speed during spin-down
+            # only report fully off once the device confirms fan speed is 0
+            self._attr_preset_mode = None
+            if fan_speed and fan_speed > 0:
+                self._attr_is_on = True
+                self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+            else:
+                self._attr_is_on = False
+                self._attr_percentage = 0
 
     @callback
     def _handle_coordinator_update(self) -> None:
