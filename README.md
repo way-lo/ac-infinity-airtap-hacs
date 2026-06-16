@@ -17,8 +17,10 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 - `async_set_max_speed`: fixed copy-paste bug where `self.state.level_off = value` was incorrectly used instead of `self.state.level_on = value`
 
 **`fan.py`**
-- Import updated to include `get_device_model`
+- Import updated to include `get_device_model` and `WORK_TYPE_ON`
 - `DeviceInfo` construction: replaced `DEVICE_MODEL[device.state.type]` with `get_device_model(device.state.type)`
+- `_update_attrs`: replaced unreliable `self._device.is_on` (no such property in `device.py`) with explicit `work_type` comparison using `WORK_TYPE_ON`, `WORK_TYPE_AUTO`, and `WORK_TYPE_OFF`
+- `_update_attrs`: during `WORK_TYPE_OFF`, percentage now stays live while `fan_speed > 0` to preserve spin-down readout; `is_on` and percentage only go to `False`/`0` once the device confirms fan speed is zero
 
 **`number.py`**
 - Import updated to include `get_device_model`
@@ -39,9 +41,13 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 - Added `icon.png` for HACS integration icon
 - Added `logo.png` for HACS logo view
 
+**`hacs.json`**
+- Added `"icon"` field pointing to `custom_components/ac_infinity_airtap/images/icon.png`
+
 ---
 
-**Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`, `hacs.json`
+**Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`
+
 # ac-infinity-airtap-hacs
 
 Home Assistant custom integration for Bluetooth Low Energy (BLE) control of [AC Infinity Airtap](https://acinfinity.com/register-booster-fans/) series register fans.
