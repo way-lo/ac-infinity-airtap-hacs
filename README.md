@@ -1,12 +1,14 @@
 # Vibecode edited 6.16.26 for corrections
-Here's the full changelog comparing v1.1.1 → v1.1.2:
+Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.2):
 
 ---
 
 **`manifest.json`**
 - Bumped version from `1.1.1` to `1.1.2`
+- `"domain"` changed from `"ac_infinity"` to `"ac_infinity_airtap"`
 
 **`const.py`**
+- `DOMAIN` changed from `"ac_infinity"` to `"ac_infinity_airtap"`
 - Removed unused `UPDATE_SECONDS = 15` constant
 - Added `get_device_model(device_type: int) -> str` helper function with safe `.get()` fallback for unknown device types
 
@@ -30,9 +32,12 @@ Here's the full changelog comparing v1.1.1 → v1.1.2:
 - Import updated to include `get_device_model`
 - `DeviceInfo` construction: replaced `DEVICE_MODEL[device.state.type]` with `get_device_model(device.state.type)`
 
+**Component folder**
+- Renamed from `custom_components/ac_infinity/` to `custom_components/ac_infinity_airtap/`
+
 ---
 
-**Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `fan.py` (logic), `models.py`, `strings.json`, `translations/en.json`, `hacs.json`
+**Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`, `hacs.json`
 
 # ac-infinity-airtap-hacs
 
