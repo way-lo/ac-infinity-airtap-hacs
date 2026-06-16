@@ -100,26 +100,22 @@ class ACInfinityFan(
     def _update_attrs(self) -> None:
         """Handle updating _attr values."""
         work_type = self._device.state.work_type
-        fan_speed = self._device.state.fan
-
         if work_type == WORK_TYPE_AUTO:
             self._attr_is_on = True
             self._attr_preset_mode = PRESET_AUTO_MODE
-            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+            self._attr_percentage = ranged_value_to_percentage(
+                SPEED_RANGE, self._device.state.fan
+            )
         elif work_type == WORK_TYPE_ON:
             self._attr_is_on = True
             self._attr_preset_mode = None
-            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+            self._attr_percentage = ranged_value_to_percentage(
+                SPEED_RANGE, self._device.state.fan
+            )
         else:
-            # work_type is WORK_TYPE_OFF, but show live speed during spin-down
-            # only report fully off once the device confirms fan speed is 0
+            self._attr_is_on = False
             self._attr_preset_mode = None
-            if fan_speed and fan_speed > 0:
-                self._attr_is_on = True
-                self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
-            else:
-                self._attr_is_on = False
-                self._attr_percentage = 0
+            self._attr_percentage = 0
 
     @callback
     def _handle_coordinator_update(self) -> None:
