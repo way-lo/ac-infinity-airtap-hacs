@@ -1,10 +1,10 @@
-# Vibecode 6/17/26 for customizations/optimization
-Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.2):
+# Vibecoded 6.17.26 for customizations/optimization
+Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.3):
 
 ---
 
 **`manifest.json`**
-- Bumped version from `1.1.1` to `1.1.2`
+- Bumped version from `1.1.1` to `1.1.3`
 - `"domain"` changed from `"ac_infinity"` to `"ac_infinity_airtap"`
 
 **`const.py`**
@@ -19,7 +19,13 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 **`fan.py`**
 - Imports updated to include `get_device_model` and `WORK_TYPE_ON`
 - `DeviceInfo` construction: replaced `DEVICE_MODEL[device.state.type]` with `get_device_model(device.state.type)`
-- `_update_attrs`: replaced unreliable `self._device.is_on` (no such property in `device.py`) with explicit `work_type` comparisons using `WORK_TYPE_ON`, `WORK_TYPE_AUTO`, and `WORK_TYPE_OFF`; percentage forced to `0` and `is_on` set to `False` when off
+- Added `PRESET_ON_MODE = "On"` constant alongside existing `PRESET_AUTO_MODE = "Auto"`
+- Preset list updated to `[Auto, On]`
+- `async_set_preset_mode`: `Auto` calls `set_mode_auto()`, `On` calls `turn_on(None)`
+- `_update_attrs`: refactored into three explicit states driven by `work_type`:
+  - `WORK_TYPE_AUTO` → `preset_mode = "Auto"`, `is_on` driven by `fan_speed > 0` to prevent icon spinning when fan idles at 0% in auto mode
+  - `WORK_TYPE_ON` → `is_on = True`, `preset_mode = "On"`, live percentage
+  - `WORK_TYPE_OFF` → `is_on = False`, `preset_mode = None`, percentage = 0
 
 **`number.py`**
 - Import updated to include `get_device_model`
@@ -41,11 +47,12 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 - Contains `icon.png` (256×256px) and `logo.png`
 
 **`hacs.json`**
-- Added `"icon"` field, updated through iterations to final path: `custom_components/ac_infinity_airtap/brand/icon.png`
+- Added `"icon"` field pointing to `custom_components/ac_infinity_airtap/brand/icon.png`
 
 ---
 
 **Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`
+---
 
 Home Assistant custom integration for Bluetooth Low Energy (BLE) control of [AC Infinity Airtap](https://acinfinity.com/register-booster-fans/) series register fans.
 
