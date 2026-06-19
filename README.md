@@ -79,7 +79,7 @@ Uses [ac-infinity-ble](https://github.com/hunterjm/ac-infinity-ble/) library.
 
 ### Debug Logging
 
-To enbale debug logging, configure the your [loggers](https://www.home-assistant.io/integrations/logger/) as follows:
+To enable debug logging, configure the your [loggers](https://www.home-assistant.io/integrations/logger/) as follows:
 
 ```yaml
 logger:
