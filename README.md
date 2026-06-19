@@ -50,9 +50,8 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 **`hacs.json`**
 - Added `"icon"` field pointing to `custom_components/ac_infinity_airtap/brand/icon.png`
 
----
-
 **Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`
+
 ---
 
 Home Assistant custom integration for Bluetooth Low Energy (BLE) control of [AC Infinity Airtap](https://acinfinity.com/register-booster-fans/) series register fans.
