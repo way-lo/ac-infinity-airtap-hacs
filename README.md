@@ -1,4 +1,4 @@
-# Vibecoded 6.17.26 for customizations/optimization
+# Vibecoded 6.18.26 for customizations/optimization
 Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.3):
 
 ---
@@ -19,13 +19,14 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 **`fan.py`**
 - Imports updated to include `get_device_model` and `WORK_TYPE_ON`
 - `DeviceInfo` construction: replaced `DEVICE_MODEL[device.state.type]` with `get_device_model(device.state.type)`
-- Added `PRESET_ON_MODE = "On"` constant alongside existing `PRESET_AUTO_MODE = "Auto"`
-- Preset list updated to `[Auto, On]`
+- Added `PRESET_AUTO_MODE = "Auto"` and `PRESET_ON_MODE = "On"` preset constants
+- Preset list set to `[Auto, On]`
+- Added `is_on` property override to prevent base `FanEntity` class from overriding `_attr_is_on`
 - `async_set_preset_mode`: `Auto` calls `set_mode_auto()`, `On` calls `turn_on(None)`
 - `_update_attrs`: refactored into three explicit states driven by `work_type`:
-  - `WORK_TYPE_AUTO` → `preset_mode = "Auto"`, `is_on` driven by `fan_speed > 0` to prevent icon spinning when fan idles at 0% in auto mode
+  - `WORK_TYPE_AUTO` → `preset_mode = "Auto"`, `is_on` and `percentage` only set to active values when `fan_speed > 1`; otherwise `is_on = False` and `percentage = 0` to prevent icon spinning when fan idles in auto mode
   - `WORK_TYPE_ON` → `is_on = True`, `preset_mode = "On"`, live percentage
-  - `WORK_TYPE_OFF` → `is_on = False`, `preset_mode = None`, percentage = 0
+  - `WORK_TYPE_OFF` → `is_on = False`, `preset_mode = None`, `percentage = 0`
 
 **`number.py`**
 - Import updated to include `get_device_model`
