@@ -12,8 +12,8 @@ There are 4 known versions of this device.  Look on the back of the unit on the 
 
 You may be tempted to swap out the stock AC Infinity fans with quieter ones, such as Noctua.  My deep investigation showed this is not worthwhile.  Reasons:
 
-  1. On the Gen 3 model, the fan pins do not seem to be wired in the standard fashion.  These are 3-pin fans, but they do not use standard voltage modulation.  Plugging in a 3-pin fan will result in it running only at 100% (or 0%).
-  2. Second, using an anemometer to measure wind speed and a calibrated dB meter to measure noise, the Noctua NF-A9 failed to live up to expectations.  At 100%, and 70% (using their provided impedence cable) the fan failed to produce as much wind speed as stock, and it was often noiser than stock.  The NF-B9 redux-1600 3-pin fan also yielded the same disappointing results.
+  1. On the Gen 3 model, the fan pins do not seem to be wired in the standard fashion.  These are 3-pin fans, but they do not use standard voltage modulation.  Plugging in a 3-pin fan will result in it running only at 100% (or 0%).  A low-noise adapter can drop fan speed to 70%.  Regardless, you lose all granular speed control.
+  2. Second, using an anemometer to measure wind speed and a calibrated dB meter to measure noise, the Noctua NF-A9 failed to live up to expectations.  At 100%, and 70% (using a NA-RC7 low noise adapter cable) the fan failed to produce as much wind speed as stock, and it was often noiser than stock.  The NF-B9 redux-1600 3-pin fan also yielded the same disappointing results.
 
 # Vibecoded 6.18.26 for customizations/optimization
 Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.3):
