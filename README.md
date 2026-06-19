@@ -2,7 +2,7 @@ Deep thoughts on the AC Infinity Airtap
 
 There are 4 known versions of this device.  Look on the back of the unit on the fan box for hints to your model.
 
-"Gen 0" - Mine was purchased in mid 2023, no smart features or remote.  No FCC ID as it does not transmit signals.
+"Gen 0" - Mine was purchased in mid 2023, no smart features or remote.  No FCC ID as it does not transmit signals. No "Gen" lsited after the mode name.
 
 "Gen 1" - Smart features with app and BT connectivity.  Now with FCC ID: 2AXMF-RBF.  May not be compatible with these HA integrations.  No "Gen" listed after the model name.
 
