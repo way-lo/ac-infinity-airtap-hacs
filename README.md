@@ -8,7 +8,7 @@ There are 4 known versions of this device.  Look on the back of the unit on the 
 
 "Gen 2" - Smart features with app and BT connectivity.  "Gen 2" listed after the model name.  Compatible with these BT HA integrations.
 
-"Gen 3" - Smart features with app and BT connectivity.  Latest available, Same FCC ID as above. "Gen 3" text after model name.  Purchased mine 5/2026.
+"Gen 3" - Smart features with app and BT connectivity.  Latest available, same FCC ID as above. "Gen 3" text after model name.  Purchased mine 5/2026.
 
 # Vibecoded 6.18.26 for customizations/optimization
 Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.3):
