@@ -48,6 +48,11 @@ class ACInfinityFan(
     )
     _attr_preset_modes = [PRESET_AUTO_MODE, PRESET_ON_MODE]
 
+    @property
+    def is_on(self) -> bool | None:
+        """Return true only if fan is actually spinning."""
+        return self._attr_is_on
+
     def __init__(
         self,
         coordinator: ACInfinityDataUpdateCoordinator,
@@ -104,12 +109,16 @@ class ACInfinityFan(
         """Handle updating _attr values."""
         work_type = self._device.state.work_type
         fan_speed = self._device.state.fan
-
         if work_type == WORK_TYPE_AUTO:
             self._attr_preset_mode = PRESET_AUTO_MODE
-            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
-            # Only show as on if the fan is actually spinning
-            self._attr_is_on = bool(fan_speed and fan_speed > 0)
+            # Calculate percentage first; speed 1 maps to 0% due to range minimum
+            # Treat 0% as off to prevent icon spinning when fan is idle in auto mode
+            if fan_speed and fan_speed > 1:
+                self._attr_is_on = True
+                self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, fan_speed)
+            else:
+                self._attr_is_on = False
+                self._attr_percentage = 0
         elif work_type == WORK_TYPE_ON:
             self._attr_is_on = True
             self._attr_preset_mode = PRESET_ON_MODE
