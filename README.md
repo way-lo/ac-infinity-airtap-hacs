@@ -15,13 +15,13 @@ You may be tempted to swap out the stock AC Infinity fans with quieter ones, suc
   1. On the Gen 3 model, the fan pins do not seem to be wired in the standard fashion.  These are 3-pin fans, but they do not use standard voltage modulation.  Plugging in a 4 or 3-pin fan will result in it running only at 100% (or 0%).  A low-noise adapter can drop fan speed to 70%.  Regardless, you lose all granular speed control.
   2. Second, using an anemometer to measure wind speed and a calibrated dB meter to measure noise, the Noctua NF-A9 failed to live up to expectations.  At 100%, and 70% (using a NA-RC7 low noise adapter cable) the fan failed to produce as much wind speed as stock, and it was often noiser than stock.  The NF-B9 redux-1600 3-pin fan also yielded the same disappointing results.
 
-# Vibecoded 6.18.26 for customizations/optimization
-Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.3):
+# Vibecoded 6.18.26-6.27.26 for customizations/optimization
+Here's the full changelog from the original upload (v1.1.1) to the current build (v1.1.4):
 
 ---
 
 **`manifest.json`**
-- Bumped version from `1.1.1` to `1.1.3`
+- Bumped version from `1.1.1` to `1.1.4`
 - `"domain"` changed from `"ac_infinity"` to `"ac_infinity_airtap"`
 
 **`const.py`**
@@ -44,6 +44,12 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
   - `WORK_TYPE_AUTO` → `preset_mode = "Auto"`, `is_on` and `percentage` only set to active values when `fan_speed > 1`; otherwise `is_on = False` and `percentage = 0` to prevent icon spinning when fan idles in auto mode
   - `WORK_TYPE_ON` → `is_on = True`, `preset_mode = "On"`, live percentage
   - `WORK_TYPE_OFF` → `is_on = False`, `preset_mode = None`, `percentage = 0`
+- Added optimistic state updates — UI reflects commands immediately without waiting for next poll:
+  - `async_turn_off` → immediately sets `is_on = False`, `preset_mode = None`, `percentage = 0`
+  - `async_turn_on` → immediately sets `is_on = True`, `preset_mode = "On"`
+  - `async_set_percentage` → immediately reflects new speed percentage
+  - `async_set_preset_mode("Auto")` → immediately sets `preset_mode = "Auto"`
+  - `async_set_preset_mode("On")` → immediately sets `is_on = True`, `preset_mode = "On"`
 
 **`number.py`**
 - Import updated to include `get_device_model`
@@ -66,6 +72,8 @@ Here's the full changelog from the original upload (v1.1.1) to the current build
 
 **`hacs.json`**
 - Added `"icon"` field pointing to `custom_components/ac_infinity_airtap/brand/icon.png`
+
+---
 
 **Unchanged:** `__init__.py`, `config_flow.py`, `coordinator.py`, `models.py`, `strings.json`, `translations/en.json`
 
