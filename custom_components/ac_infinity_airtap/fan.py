@@ -79,13 +79,9 @@ class ACInfinityFan(
 
         await self._device.set_speed(speed)
 
-        # Optimistic update — reflect new speed immediately in UI
-        if speed > 1:
-            self._attr_is_on = True
-            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, speed)
-        else:
-            self._attr_is_on = False
-            self._attr_percentage = 0
+        # Optimistic update — reflect on/off state immediately, but not percentage
+        # (percentage waits for next poll to avoid false 0% display during transitions)
+        self._attr_is_on = speed > 1
         self.async_write_ha_state()
 
     async def async_turn_on(
@@ -102,31 +98,28 @@ class ACInfinityFan(
             speed = math.ceil(percentage_to_ranged_value(SPEED_RANGE, percentage))
         await self._device.turn_on(speed)
 
-        # Optimistic update — reflect on state immediately in UI
+        # Optimistic update — reflect on state and preset immediately, not percentage
         self._attr_is_on = True
         self._attr_preset_mode = PRESET_ON_MODE
-        if speed and speed > 1:
-            self._attr_percentage = ranged_value_to_percentage(SPEED_RANGE, speed)
         self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._device.turn_off()
 
-        # Optimistic update — reflect off state immediately in UI
+        # Optimistic update — reflect off state immediately, not percentage
         self._attr_is_on = False
         self._attr_preset_mode = None
-        self._attr_percentage = 0
         self.async_write_ha_state()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode == PRESET_AUTO_MODE:
             await self._device.set_mode_auto()
-            # Optimistic update — reflect auto mode immediately in UI
+            # Optimistic update — reflect auto mode immediately
             self._attr_preset_mode = PRESET_AUTO_MODE
             self.async_write_ha_state()
         elif preset_mode == PRESET_ON_MODE:
             await self._device.turn_on(None)
-            # Optimistic update — reflect on mode immediately in UI
+            # Optimistic update — reflect on mode immediately
             self._attr_is_on = True
             self._attr_preset_mode = PRESET_ON_MODE
             self.async_write_ha_state()
